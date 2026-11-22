@@ -1,0 +1,39 @@
+{
+  "manifestVersion": 1,
+  "id": "viniciusfonseca.java-kotlin",
+  "name": "Java and Kotlin",
+  "version": "0.2.1",
+  "description": "Java and Kotlin language servers, import ordering and main templates.",
+  "license": "MIT",
+  "ced": { "minVersion": "0.2.0", "apiMajor": 1 },
+  "kind": "executable",
+  "entrypoints": {
+    "darwin-arm64": "bin/darwin-arm64/java-kotlin",
+    "darwin-x86_64": "bin/darwin-x86_64/java-kotlin",
+    "linux-arm64": "bin/linux-arm64/java-kotlin",
+    "linux-x86_64": "bin/linux-x86_64/java-kotlin"
+  },
+  "activationEvents": [
+    "onCommand:viniciusfonseca.java-kotlin.sortImports",
+    "onCommand:viniciusfonseca.java-kotlin.insertMain"
+  ],
+  "capabilities": ["documents.read", "documents.edit"],
+  "untrustedWorkspaces": false,
+  "contributes": {
+    "languageServers": ["java", "kotlin"],
+    "commands": [
+      {
+        "id": "viniciusfonseca.java-kotlin.sortImports",
+        "title": "Sort Java/Kotlin Imports",
+        "category": "Language",
+        "enableWhen": { "hasDocument": true, "editorTextFocus": true, "workspaceTrusted": true }
+      },
+      {
+        "id": "viniciusfonseca.java-kotlin.insertMain",
+        "title": "Insert Java/Kotlin Main",
+        "category": "Language",
+        "enableWhen": { "hasDocument": true, "editorTextFocus": true, "workspaceTrusted": true }
+      }
+    ]
+  }
+}
