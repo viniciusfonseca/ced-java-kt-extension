@@ -8,6 +8,8 @@ Run `make package` with Go 1.23+ and Make, then choose **Install Extension from 
 
 On macOS with Homebrew installed, run `./scripts/install-language-servers.sh`. It installs Eclipse JDT LS with its OpenJDK dependency, JetBrains Kotlin LSP, and Maven for importing projects without a Maven wrapper. CED finds the executables in the standard Homebrew directories when opened from Finder. If a source file is already open, run **Restart Language Server** from the palette.
 
+The installer uses the [official JetBrains formula](https://github.com/JetBrains/homebrew-utils/blob/master/Formula/kotlin-lsp.rb) and switches the Homebrew link from the old cask after checking that the new executable starts. If Homebrew requires explicit trust for the JetBrains tap, run `brew tap jetbrains/utils` and `brew trust --formula jetbrains/utils/kotlin-lsp` before rerunning the installer. On macOS, Gatekeeper can reject the cask's launcher or remove its native file watcher, causing `UnsatisfiedLinkError` for `libfilewatcher_jni.dylib`.
+
 For manual installations, the launcher looks for `jdtls` for Java and `kotlin-lsp` or `intellij-server` for Kotlin on the inherited PATH and in standard Homebrew and local bin directories. You can set `CED_JDTLS` or `CED_KOTLIN_LSP` to the absolute executable path before starting CED. Set `JAVA_HOME` to a JDK supported by the JDT LS build you install. The validation used JDK 25 to run JDT LS 1.64.0 and JDK 21 to build the examples. Kotlin Maven import uses the project's Maven wrapper or `mvn` on PATH. Gradle projects should include the Gradle wrapper. An optional absolute `CED_LSP_LOG` path collects the servers' standard error.
 
 - [Eclipse JDT LS](https://github.com/eclipse-jdtls/eclipse.jdt.ls)

@@ -22,7 +22,22 @@ fi
 
 # JDT LS and Maven use the OpenJDK dependency managed by Homebrew.
 "$brew_bin" install --formula jdtls maven
-"$brew_bin" install --cask kotlin-lsp
+
+# Stage the official formula before changing any existing cask link.
+kotlin_formula=jetbrains/utils/kotlin-lsp
+"$brew_bin" install --formula --skip-link "$kotlin_formula"
+kotlin_prefix="$("$brew_bin" --prefix "$kotlin_formula")"
+"$kotlin_prefix/bin/kotlin-lsp" --version
+
+if "$brew_bin" list --cask kotlin-lsp >/dev/null 2>&1; then
+    "$brew_bin" unlink --cask kotlin-lsp
+    if ! "$brew_bin" link --formula "$kotlin_formula"; then
+        "$brew_bin" link --cask kotlin-lsp
+        exit 1
+    fi
+else
+    "$brew_bin" link --formula "$kotlin_formula"
+fi
 
 brew_prefix="$("$brew_bin" --prefix)"
 for command_name in jdtls kotlin-lsp mvn; do
