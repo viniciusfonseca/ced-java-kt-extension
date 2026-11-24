@@ -16,10 +16,10 @@ func TestPackagedLanguageServerLauncher(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		language, env, arg string
+		language, arg string
 	}{
-		{"java", "CED_JDTLS", "-data"},
-		{"kotlin", "CED_KOTLIN_LSP", "--stdio"},
+		{"java", "-data"},
+		{"kotlin", "--stdio"},
 	} {
 		t.Run(test.language, func(t *testing.T) {
 			directory := t.TempDir()
@@ -33,8 +33,13 @@ func TestPackagedLanguageServerLauncher(t *testing.T) {
 				t.Fatal(err)
 			}
 			gradleJDK := filepath.Join(directory, "Gradle JDK")
-			cmd := exec.Command(binary, "--language-server", test.language, root, gradleJDK)
-			cmd.Env = []string{test.env + "=" + tool, "TMPDIR=" + directory, "JAVA_HOME=/launcher-jdk"}
+			configuredPath := tool
+			if test.language == "kotlin" {
+				configuredPath = "~/" + filepath.Base(tool)
+			}
+			cmd := exec.Command(binary, "--language-server", test.language, root, gradleJDK, configuredPath)
+			cmd.Env = []string{"HOME=" + directory, "TMPDIR=" + directory, "JAVA_HOME=/launcher-jdk",
+				"CED_JDTLS=/legacy-java", "CED_KOTLIN_LSP=/legacy-kotlin"}
 			protocol := "Content-Length: 2\r\n\r\n{}"
 			cmd.Stdin = strings.NewReader(protocol)
 			var stderr bytes.Buffer
@@ -64,8 +69,19 @@ func TestPackagedLanguageServerLauncher(t *testing.T) {
 }
 
 func TestLauncherRejectsRelativeExecutable(t *testing.T) {
-	t.Setenv("CED_JDTLS", "project-script")
-	if _, err := launcherExecutable("java", nil); err == nil {
-		t.Fatal("expected an absolute executable path")
+	if _, err := launcherExecutable("java", "project-script", nil); err == nil || !strings.Contains(err.Error(), "java.jdtlsPath") {
+		t.Fatalf("expected an error naming java.jdtlsPath, got %v", err)
+	}
+}
+
+func TestLauncherDiscoversExecutableWithoutOverride(t *testing.T) {
+	directory := t.TempDir()
+	tool := filepath.Join(directory, "kotlin-lsp")
+	if err := os.WriteFile(tool, []byte("#!/bin/sh\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CED_KOTLIN_LSP", "/legacy-kotlin")
+	if executable, err := launcherExecutable("kotlin", "", []string{directory}); err != nil || executable != tool {
+		t.Fatalf("expected %s, got %s (%v)", tool, executable, err)
 	}
 }

@@ -18,7 +18,7 @@ import (
 
 const (
 	extensionID = "viniciusfonseca.java-kotlin"
-	version     = "0.2.1"
+	version     = "0.2.2"
 	sortID      = extensionID + ".sortImports"
 	mainID      = extensionID + ".insertMain"
 	getMethod   = "documents/get"
@@ -698,15 +698,18 @@ func (p *peer) snapshot(result fields) {
 
 func main() {
 	if len(os.Args) != 1 {
-		if (len(os.Args) != 4 && len(os.Args) != 5) || os.Args[1] != "--language-server" {
-			fmt.Fprintln(os.Stderr, "Expected --language-server <java|kotlin> <project-root> [<gradle-jdk>].")
+		if len(os.Args) < 4 || len(os.Args) > 6 || os.Args[1] != "--language-server" {
+			fmt.Fprintln(os.Stderr, "Expected --language-server <java|kotlin> <project-root> [<gradle-jdk> [<server-executable>]].")
 			os.Exit(2)
 		}
-		var gradleJavaHome string
-		if len(os.Args) == 5 {
+		var gradleJavaHome, serverExecutable string
+		if len(os.Args) >= 5 {
 			gradleJavaHome = os.Args[4]
 		}
-		if err := languageServer(os.Args[2], os.Args[3], gradleJavaHome); err != nil {
+		if len(os.Args) == 6 {
+			serverExecutable = os.Args[5]
+		}
+		if err := languageServer(os.Args[2], os.Args[3], gradleJavaHome, serverExecutable); err != nil {
 			fmt.Fprintln(os.Stderr, "CED Java and Kotlin:", err)
 			os.Exit(1)
 		}

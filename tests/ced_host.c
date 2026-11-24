@@ -1,7 +1,9 @@
 #include "extensions/manager.h"
+#include "extensions/lsp_launch.h"
 #include "editor_bridge.h"
 #include "jvm_project.h"
 #include "lsp.h"
+#include "output.h"
 #include "cui_internal.h"
 #include <sys/stat.h>
 #include <assert.h>
@@ -209,8 +211,54 @@ static void check_jvm_project(const char *root, const char *java, const char *ko
     assert(ced_jvm_project(root, kotlin, &settings, detected, &build, error));
     assert(build == CED_JVM_GRADLE && !strcmp(detected, root));
     assert(!strcmp(settings.gradle_java, "/tools/jdk"));
+    const char *user_json = "{\"java.jdtlsPath\":\"/tools/jdtls\",\"kotlin.lspPath\":\"~/bin/intellij-server\"}";
+    CedPreferences user;
+    assert(ced_preferences_validate(user_json, strlen(user_json), &user, error));
+    fixture_file(root, ".ced/settings.json", "{\"java.jdtlsPath\":\"/workspace tools/jdtls\"}");
+    assert(ced_preferences_project(root, &user.jvm, &settings, error));
+    assert(!strcmp(settings.jdtls_path, "/workspace tools/jdtls"));
+    assert(!strcmp(settings.kotlin_lsp_path, "~/bin/intellij-server"));
+    fixture_file(root, ".ced/settings.json", "{\"kotlin.lspPath\":\"\"}");
+    assert(ced_preferences_project(root, &user.jvm, &settings, error));
+    assert(!strcmp(settings.jdtls_path, "/tools/jdtls") && !*settings.kotlin_lsp_path);
+    fixture_file(root, ".ced/settings.json", "{\"kotlin.lspPath\":true}");
+    assert(!ced_preferences_project(root, &user.jvm, &settings, error) && strstr(error, "kotlin.lspPath"));
     fixture_file(root, ".ced/settings.json", "{\"maven.pomPath\":33}");
     assert(!ced_preferences_project(root, &defaults, &settings, error));
+}
+
+static void check_configured_server(const char *root, const char *profile, const CedExtensionRecord *provider) {
+    char tool[CED_PATH], json[CED_PATH + 64], error[CED_ERROR];
+    assert(ced_join(tool, sizeof tool, root, "custom Kotlin launcher"));
+    fixture_file(root, "custom Kotlin launcher", "#!/bin/sh\n[ \"$1\" = --stdio ] || exit 1\necho configured-kotlin-started >&2\n");
+    assert(!chmod(tool, 0700));
+    int length = snprintf(json, sizeof json, "{\"kotlin.lspPath\":\"%s\"}", tool);
+    assert(length > 0 && (size_t)length < sizeof json);
+    fixture_file(root, ".ced/settings.json", json);
+    CedJvmSettings defaults = {0}, settings;
+    assert(ced_preferences_project(root, &defaults, &settings, error));
+    CedExtensionLspLaunch *launch = ced_extension_lsp_launch(profile, provider, CED_LSP_KOTLIN,
+        root, CED_JVM_MAVEN, "", "", settings.kotlin_lsp_path, error);
+    assert(launch);
+    CedLsp *server = NULL;
+    int lease = -1;
+    char output[CED_OUTPUT_CAP] = {0};
+    uint64_t revision = 0;
+    bool started = false;
+    for (int n = 0; n < 300 && !started; n++) {
+        if (launch && ced_extension_lsp_take(launch, &server, &lease, error)) {
+            launch = NULL;
+            assert(server);
+        }
+        ced_lsp_poll(server);
+        ced_output_copy(output, &revision);
+        started = strstr(output, "configured-kotlin-started") != NULL;
+        if (!started) nanosleep(&(struct timespec){.tv_nsec = 10000000}, NULL);
+    }
+    ced_extension_lsp_cancel(launch);
+    ced_lsp_stop(server);
+    if (lease >= 0) close(lease);
+    assert(started);
 }
 
 int main(int argc, char **argv) {
@@ -261,6 +309,7 @@ int main(int argc, char **argv) {
     assert(host->trusted);
     assert(ced_extensions_language_provider(host, CED_EXT_LSP_JAVA) == &instance->record);
     assert(ced_extensions_language_provider(host, CED_EXT_LSP_KOTLIN) == &instance->record);
+    check_configured_server(root, profile, &instance->record);
     editor.context.workspace_trusted = true;
 
     assert(!instance->process);

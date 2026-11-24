@@ -18,22 +18,33 @@ func launcherPath() []string {
 	return append(paths, "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin")
 }
 
-func launcherExecutable(language string, paths []string) (string, error) {
+func launcherExecutable(language, configuredPath string, paths []string) (string, error) {
 	var key string
 	var names []string
 	switch language {
 	case "java":
-		key, names = "CED_JDTLS", []string{"jdtls"}
+		key, names = "java.jdtlsPath", []string{"jdtls"}
 	case "kotlin":
-		key, names = "CED_KOTLIN_LSP", []string{"kotlin-lsp", "intellij-server"}
+		key, names = "kotlin.lspPath", []string{"kotlin-lsp", "intellij-server"}
 	default:
 		return "", fmt.Errorf("unknown language server %q", language)
 	}
-	if path := os.Getenv(key); path != "" {
-		if !filepath.IsAbs(path) {
-			return "", fmt.Errorf("%s must be an absolute executable path", key)
+	if configuredPath != "" {
+		if strings.HasPrefix(configuredPath, "~/") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", fmt.Errorf("%s: %w", key, err)
+			}
+			configuredPath = filepath.Join(home, configuredPath[2:])
 		}
-		return exec.LookPath(path)
+		if !filepath.IsAbs(configuredPath) {
+			return "", fmt.Errorf("%s must be an absolute executable path or start with ~/", key)
+		}
+		executable, err := exec.LookPath(configuredPath)
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", key, err)
+		}
+		return executable, nil
 	}
 	for _, directory := range paths {
 		for _, name := range names {
@@ -42,15 +53,15 @@ func launcherExecutable(language string, paths []string) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("install %s or set %s to its absolute executable path", names[0], key)
+	return "", fmt.Errorf("install %s or set %s in settings.json to its absolute executable path", names[0], key)
 }
 
-func languageServer(language, root, gradleJavaHome string) error {
+func languageServer(language, root, gradleJavaHome, configuredPath string) error {
 	if !filepath.IsAbs(root) {
 		return fmt.Errorf("the project directory must be absolute")
 	}
 	paths := launcherPath()
-	executable, err := launcherExecutable(language, paths)
+	executable, err := launcherExecutable(language, configuredPath, paths)
 	if err != nil {
 		return err
 	}

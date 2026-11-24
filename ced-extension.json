@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "viniciusfonseca.java-kotlin",
   "name": "Java and Kotlin",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Java and Kotlin language servers, import ordering and main templates.",
   "license": "MIT",
   "ced": { "minVersion": "0.2.0", "apiMajor": 1 },

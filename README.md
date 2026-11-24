@@ -10,7 +10,18 @@ On macOS with Homebrew installed, run `./scripts/install-language-servers.sh`. I
 
 The installer uses the [official JetBrains formula](https://github.com/JetBrains/homebrew-utils/blob/master/Formula/kotlin-lsp.rb) and switches the Homebrew link from the old cask after checking that the new executable starts. If Homebrew requires explicit trust for the JetBrains tap, run `brew tap jetbrains/utils` and `brew trust --formula jetbrains/utils/kotlin-lsp` before rerunning the installer. On macOS, Gatekeeper can reject the cask's launcher or remove its native file watcher, causing `UnsatisfiedLinkError` for `libfilewatcher_jni.dylib`.
 
-For manual installations, the launcher looks for `jdtls` for Java and `kotlin-lsp` or `intellij-server` for Kotlin on the inherited PATH and in standard Homebrew and local bin directories. You can set `CED_JDTLS` or `CED_KOTLIN_LSP` to the absolute executable path before starting CED. Set `JAVA_HOME` to a JDK supported by the JDT LS build you install. The validation used JDK 25 to run JDT LS 1.64.0 and JDK 21 to build the examples. Kotlin Maven import uses the project's Maven wrapper or `mvn` on PATH. Gradle projects should include the Gradle wrapper. An optional absolute `CED_LSP_LOG` path collects the servers' standard error.
+By default, the launcher looks for `jdtls` for Java and `kotlin-lsp` or `intellij-server` for Kotlin on PATH and in standard Homebrew and local bin directories. To select a particular executable, add these keys to `~/.ced/settings.json` or to a trusted workspace's `.ced/settings.json`:
+
+```json
+{
+  "java.jdtlsPath": "/absolute/path/to/jdtls",
+  "kotlin.lspPath": "~/tools/kotlin-lsp/bin/intellij-server"
+}
+```
+
+Use an absolute path or start it with `~/`. Workspace values override user settings. Set a workspace value to an empty string to restore executable discovery. These keys replace `CED_JDTLS` and `CED_KOTLIN_LSP`. Update both CED and the extension to use the new keys, then run **Restart Language Server** after editing the settings.
+
+Set `JAVA_HOME` to a JDK supported by the JDT LS build you install. The validation used JDK 25 to run JDT LS 1.64.0 and JDK 21 to build the examples. Kotlin Maven import uses the project's Maven wrapper or `mvn` on PATH. Gradle projects should include the Gradle wrapper. An optional absolute `CED_LSP_LOG` path collects the servers' standard error.
 
 - [Eclipse JDT LS](https://github.com/eclipse-jdtls/eclipse.jdt.ls)
 - [JetBrains Kotlin LSP standalone releases](https://github.com/Kotlin/kotlin-lsp/releases)
@@ -49,4 +60,4 @@ Both commands take JSON `null` arguments and return `{"changed":boolean,"version
 
 ## CED API compatibility
 
-Version 0.2.1 targets CED 0.2.0 development **with the JVM language-server host contribution**, manifest format 1 and experimental extension API 1.0. The editing peer requires `documents/get` and `documents/applyEdits`. The server launcher uses the separate `--language-server <java|kotlin> <absolute-project-root> [<gradle-jdk>]` entrypoint and streams LSP. The installed package remains read-only. A compatible CED build is required for this manifest.
+Version 0.2.2 targets CED 0.2.0 development **with the JVM language-server host contribution**, manifest format 1 and experimental extension API 1.0. The editing peer requires `documents/get` and `documents/applyEdits`. The server launcher uses the separate `--language-server <java|kotlin> <absolute-project-root> [<gradle-jdk> [<server-executable>]]` entrypoint and streams LSP. The installed package remains read-only. A compatible CED build is required for this manifest.
